@@ -218,6 +218,80 @@ def update_url_and_sha_in_stanza(text: str, stanza: str, url: str, digest: str, 
     return text[: match.start("body")] + body + text[match.end("body") :]
 
 
+def target_from_cpu_block(stanza: str, body: str, pair: re.Match[str]) -> str | None:
+    prefix = body[: pair.start()]
+    last_arm = prefix.rfind("on_arm do")
+    last_intel = prefix.rfind("on_intel do")
+    if last_arm == -1 and last_intel == -1:
+        return None
+
+    platform = "darwin" if stanza == "on_macos" else "linux"
+    arch = "arm64" if last_arm > last_intel else "amd64"
+    return f"{platform}_{arch}"
+
+
+def release_artifact_url(
+    repository: str,
+    tag: str,
+    formula: str,
+    version: str,
+    template: str,
+    aliases: dict[str, str],
+    target: str,
+) -> str:
+    artifact_target = aliases.get(target, target)
+    artifact = template.format(
+        formula=formula,
+        version=version,
+        tag=tag,
+        target=artifact_target,
+    )
+    return f"https://github.com/{repository}/releases/download/{tag}/{artifact}"
+
+
+def update_url_and_sha_by_target_blocks(
+    text: str,
+    repository: str,
+    tag: str,
+    formula: str,
+    version: str,
+    template: str,
+    aliases: dict[str, str],
+    digest_for_url=sha256,
+) -> tuple[str, set[str]]:
+    updated_targets: set[str] = set()
+
+    for stanza in ("on_macos", "on_linux"):
+        match = stanza_match(text, stanza)
+        if not match:
+            continue
+
+        body = match.group("body")
+        replacements: list[tuple[int, int, str]] = []
+        for pair in iter_url_sha_pairs(body):
+            target = target_from_cpu_block(stanza, body, pair)
+            if not target:
+                continue
+
+            url = release_artifact_url(repository, tag, formula, version, template, aliases, target)
+            digest = digest_for_url(url)
+            existing_url = pair.group("url")
+            replacement_url = existing_url if "#{version}" in existing_url and existing_url.replace("#{version}", version) == url else url
+            replacement = (
+                f'{pair.group("prefix")}{replacement_url}'
+                f'{pair.group("middle")}{digest}{pair.group("suffix")}'
+            )
+            replacements.append((pair.start(), pair.end(), replacement))
+            updated_targets.add(target)
+
+        for start, end, replacement in reversed(replacements):
+            body = body[:start] + replacement + body[end:]
+
+        text = text[: match.start("body")] + body + text[match.end("body") :]
+
+    return text, updated_targets
+
+
 def has_stanza(text: str, stanza: str) -> bool:
     return stanza_body(text, stanza) is not None
 
@@ -415,21 +489,34 @@ def main() -> int:
 
     text = update_version(text, version)
 
-    if has_target_urls:
+    if args.artifact_template and has_macos and has_linux:
+        text, seen_targets = update_url_and_sha_by_target_blocks(
+            text,
+            args.repository,
+            args.tag,
+            args.formula,
+            version,
+            args.artifact_template,
+            target_aliases,
+        )
+        for target in sorted(set(targets) - seen_targets):
+            raise SystemExit(f"failed to update {target} in {path}")
+    elif has_target_urls:
         template = args.artifact_template or "{formula}_{version}_{target}.tar.gz"
         replacements: list[tuple[int, int, str]] = []
         seen_targets: set[str] = set()
         for match, target in classified_pairs:
             if not target:
                 continue
-            artifact_target = target_aliases.get(target, target)
-            artifact = template.format(
-                formula=args.formula,
-                version=version,
-                tag=args.tag,
-                target=artifact_target,
+            url = release_artifact_url(
+                args.repository,
+                args.tag,
+                args.formula,
+                version,
+                template,
+                target_aliases,
+                target,
             )
-            url = f"https://github.com/{args.repository}/releases/download/{args.tag}/{artifact}"
             digest = sha256(url)
             existing_url = match.group("url")
             replacement_url = url

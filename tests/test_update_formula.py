@@ -111,6 +111,69 @@ end
 
         self.assertTrue(update_formula.uses_stanza_url_mode(text, "0.9.2"))
 
+    def test_converts_platform_stanzas_to_architecture_artifacts(self) -> None:
+        text = '''class Wacli < Formula
+  on_macos do
+    on_arm do
+      url "https://github.com/openclaw/wacli/releases/download/v0.9.2/wacli-macos-universal.tar.gz"
+      sha256 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    end
+
+    on_intel do
+      url "https://github.com/openclaw/wacli/releases/download/v0.9.2/wacli-macos-universal.tar.gz"
+      sha256 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    end
+  end
+
+  on_linux do
+    on_arm do
+      url "https://github.com/openclaw/wacli/archive/refs/tags/v0.9.2.tar.gz"
+      sha256 "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    end
+
+    on_intel do
+      url "https://github.com/openclaw/wacli/archive/refs/tags/v0.9.2.tar.gz"
+      sha256 "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    end
+  end
+
+  def install
+  end
+end
+'''
+
+        def digest(url: str) -> str:
+            return {
+                "https://github.com/dovocoder/wacli/releases/download/v0.9.3/wacli-darwin-arm64.tar.gz": "1" * 64,
+                "https://github.com/dovocoder/wacli/releases/download/v0.9.3/wacli-darwin-amd64.tar.gz": "2" * 64,
+                "https://github.com/dovocoder/wacli/releases/download/v0.9.3/wacli-linux-arm64.tar.gz": "3" * 64,
+                "https://github.com/dovocoder/wacli/releases/download/v0.9.3/wacli-linux-amd64.tar.gz": "4" * 64,
+            }[url]
+
+        updated, targets = update_formula.update_url_and_sha_by_target_blocks(
+            text,
+            "dovocoder/wacli",
+            "v0.9.3",
+            "wacli",
+            "0.9.3",
+            "wacli-{target}.tar.gz",
+            {
+                "darwin_amd64": "darwin-amd64",
+                "darwin_arm64": "darwin-arm64",
+                "linux_amd64": "linux-amd64",
+                "linux_arm64": "linux-arm64",
+            },
+            digest,
+        )
+
+        self.assertEqual(targets, {"darwin_arm64", "darwin_amd64", "linux_arm64", "linux_amd64"})
+        self.assertIn("wacli-darwin-arm64.tar.gz", updated)
+        self.assertIn("wacli-darwin-amd64.tar.gz", updated)
+        self.assertIn("wacli-linux-arm64.tar.gz", updated)
+        self.assertIn("wacli-linux-amd64.tar.gz", updated)
+        self.assertNotIn("wacli-macos-universal.tar.gz", updated)
+        self.assertNotIn("archive/refs/tags", updated)
+
     def test_updates_cask_version_and_checksum_preserving_interpolated_url(self) -> None:
         text = '''cask "codexbar" do
   version "0.26.1"

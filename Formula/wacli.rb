@@ -1,18 +1,18 @@
 class Wacli < Formula
   desc "WhatsApp CLI built on whatsmeow"
-  homepage "https://github.com/openclaw/wacli"
+  homepage "https://github.com/dovocoder/wacli"
   license "MIT"
-  head "https://github.com/openclaw/wacli.git", branch: "main"
+  head "https://github.com/dovocoder/wacli.git", branch: "main"
 
   on_macos do
     on_arm do
-      url "https://github.com/openclaw/wacli/releases/download/v0.9.2/wacli-macos-universal.tar.gz"
-      sha256 "9d61fbbf7128cadab5d4c3cafde3b6e14f7d3b87bdfff3ce505ecc458ba32bc4"
+      url "https://github.com/dovocoder/wacli/releases/download/v0.9.2/wacli-darwin-arm64.tar.gz"
+      sha256 "44f50bb31de61a4084ef7dc639a384fc33943d85e9be47e80d8cf5549442fd9d"
     end
 
     on_intel do
-      url "https://github.com/openclaw/wacli/releases/download/v0.9.2/wacli-macos-universal.tar.gz"
-      sha256 "9d61fbbf7128cadab5d4c3cafde3b6e14f7d3b87bdfff3ce505ecc458ba32bc4"
+      url "https://github.com/dovocoder/wacli/releases/download/v0.9.2/wacli-darwin-amd64.tar.gz"
+      sha256 "6721485ee0a1f6f6b1d9cb773623f294d113a2b447394d169d451fdb3b468842"
     end
   end
 
@@ -20,13 +20,13 @@ class Wacli < Formula
     depends_on "go" => :build
 
     on_arm do
-      url "https://github.com/openclaw/wacli/archive/refs/tags/v0.9.2.tar.gz"
-      sha256 "34c33ce2fdbcc3460a1b4868db7b47fb523cbaff462b502138f67c0f9cd5fbe8"
+      url "https://github.com/dovocoder/wacli/releases/download/v0.9.2/wacli-linux-arm64.tar.gz"
+      sha256 "2ab979813c6a2cbc3c2a89fca8557c357c23e49d28cfb289f9a0fc1ef0219f33"
     end
 
     on_intel do
-      url "https://github.com/openclaw/wacli/archive/refs/tags/v0.9.2.tar.gz"
-      sha256 "34c33ce2fdbcc3460a1b4868db7b47fb523cbaff462b502138f67c0f9cd5fbe8"
+      url "https://github.com/dovocoder/wacli/releases/download/v0.9.2/wacli-linux-amd64.tar.gz"
+      sha256 "5a62575aee7071a1577277c2407db7a816cce45e0d6956cfca96e8e00f9949ca"
     end
   end
 
